@@ -1,0 +1,2 @@
+I:/CODE VSCODE ESP/KUR BOARD V4.5/build/CMakeFiles/edit_cache.dir
+I:/CODE VSCODE ESP/KUR BOARD V4.5/build/CMakeFiles/rebuild_cache.dir
