@@ -35,8 +35,8 @@ Preferences File;
 IPAddress ip(172, 16, 1, 164);
 IPAddress ip_AP(192, 168, 1, 45);
 IPAddress netmask(255, 255, 255, 0);
-#define WIFI_NAME "MakerSpaceLab"
-#define WIFI_PASS "Maker2017"
+#define WIFI_NAME "Phuoc Le"
+#define WIFI_PASS "0909028573"
 
 WiFiServer server(80);
 WiFiClient client;
@@ -49,7 +49,7 @@ int STA_WIFI_PORT;
 #define AP_WIFI_PASS "11111111"
 
 #define LED_CONNECT_ROUTER 22
-#define LED_CONNECT_CLIENT 23
+#define LED_CONNECT_CLIENT 24
 #define RST_PIN 18
 long RSSI;
 int chVal[] = {1500, 1500, 1500, 1500}; // default value (middle)
