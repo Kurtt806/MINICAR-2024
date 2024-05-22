@@ -1,8 +1,7 @@
 
-// khoa test git  222222222222222
-#define ESP_WIFI
+// #define ESP_WIFI
 #define DEBUG
-//#define OTA
+// #define OTA
 /*====================================================================*/
 
 #ifdef DEBUG
@@ -48,9 +47,7 @@ int STA_WIFI_PORT;
 #define AP_WIFI_NAME "KUR"
 #define AP_WIFI_PASS "11111111"
 
-#define LED_CONNECT_ROUTER 22
-#define LED_CONNECT_CLIENT 23
-#define RST_PIN 18
+#define RST_PIN 0
 long RSSI;
 int chVal[] = {1500, 1500, 1500, 1500}; // default value (middle)
 
@@ -120,14 +117,10 @@ void exeCmd(String cmd);
 /*=================================================================*/
 void setup()
 {
-  pinMode(RST_PIN, INPUT_PULLUP);         // Thiết lập chân RST_PIN là INPUT_PULLUP
-  pinMode(LED_CONNECT_ROUTER, OUTPUT);    // Thiết lập chân LED_CONNECT_ROUTER là OUTPUT
-  pinMode(LED_CONNECT_CLIENT, OUTPUT);    // Thiết lập chân LED_CONNECT_CLIENT là OUTPUT
-  digitalWrite(LED_CONNECT_ROUTER, HIGH); // Đặt trạng thái ban đầu của LED_CONNECT_ROUTER là HIGH
-  digitalWrite(LED_CONNECT_CLIENT, HIGH); // Đặt trạng thái ban đầu của LED_CONNECT_CLIENT là HIGH
+  pinMode(RST_PIN, INPUT_PULLUP); // Thiết lập chân RST_PIN là INPUT_PULLUP
 
   Serial.begin(115200);            // Baudrate Serial
-  Serial2.begin(115200);           // Baudrate Serial2
+  Serial2.begin(921600);           // Baudrate Serial2
   File.begin("STA_config", false); // Bắt đầu sử dụng tệp "STA_config" trong chế độ không ghi
 
   if (STA_WIFI_NAME && STA_WIFI_PASS) // Kiểm tra nếu có tên và mật khẩu WiFi
@@ -180,7 +173,8 @@ void FC_WAITING_FOR_CONNECTION()
   // Kiểm tra xem có client nào kết nối tới máy chủ không
   if (!client.connected())
   {
-    digitalWrite(LED_CONNECT_CLIENT, HIGH);
+    Serial2.println("LED_DISCONNECT_CLIENT");
+    // digitalWrite(LED_CONNECT_CLIENT, HIGH);
     // Nếu không có client nào kết nối, chờ đợi kết nối mới
     client = server.available();
     if (digitalRead(RST_PIN) == 0)
@@ -193,7 +187,7 @@ void FC_WAITING_FOR_CONNECTION()
   }
   else
   {
-    digitalWrite(LED_CONNECT_CLIENT, LOW);
+    Serial2.println("LED_CONNECT_CLIENT");
     // Nếu có client kết nối tới máy chủ
     DEBUG_PRINT("Client connected from IP: ");
     DEBUG_PRINTLN(client.remoteIP()); // In ra địa chỉ IP của thiết bị client
@@ -294,10 +288,10 @@ void connectToWiFi(bool enable)
     delay(200);
     WiFi.mode(WIFI_STA);
 
-    //WiFi.config(ip, ip, netmask);
+    // WiFi.config(ip, ip, netmask);
     WiFi.begin(WIFI_NAME, WIFI_PASS);
 
-   // WiFi.begin(STA_WIFI_NAME, STA_WIFI_PASS);     // Bắt đầu kết nối
+    // WiFi.begin(STA_WIFI_NAME, STA_WIFI_PASS);     // Bắt đầu kết nối
     unsigned long startConnectingTime = millis(); // Thời điểm bắt đầu kết nối
     // Chờ kết nối thành công
     while (WiFi.status() != WL_CONNECTED && millis() - startConnectingTime < 10000)
@@ -308,18 +302,18 @@ void connectToWiFi(bool enable)
     // Hiển thị IP khi kết nối thành công
     if (WiFi.status() == WL_CONNECTED)
     {
-      digitalWrite(LED_CONNECT_ROUTER, LOW);
       // Kết nối thành công
       DEBUG_PRINTLN("WiFi connected");
       DEBUG_PRINT("IP address: ");
       DEBUG_PRINTLN(WiFi.localIP());
+      Serial2.println("LED_CONNECT_ROUTER");
     }
     else
     {
-      digitalWrite(LED_CONNECT_ROUTER, HIGH);
       // Không kết nối được trong 5 giây, đổi sang chế độ AP
       DEBUG_PRINTLN("Không thể kết nối với WiFi. Đang chuyển sang chế độ AP...");
       connectToWiFi(false);
+      Serial2.println("LED_DISCONNECT_ROUTER");
     }
   }
   else
@@ -353,17 +347,17 @@ void exeCmd(String cmd)
 
   /*-------servo-----------------FINE-*/
 
-  if (cmd.startsWith("CH"))
+  if (cmd.startsWith("C"))
   {
-    int ch = cmd.charAt(2) - '0'; // Lấy số kênh từ sau 'CH'
-    bool space = cmd.charAt(3) == ' ';
+    int ch = cmd.charAt(1) - '0'; // Lấy số kênh từ sau 'CH'
+    bool space = cmd.charAt(2) == ' ';
 
     // Kiểm tra xem số kênh có hợp lệ và có khoảng trắng sau số kênh không
     if (space && ch >= 1 && ch <= 5)
     {
-      chVal[ch] = cmd.substring(4).toInt(); // Lấy phần giá trị sau số thứ tự
+      chVal[ch] = cmd.substring(3).toInt(); // Lấy phần giá trị sau số thứ tự
 
-      Serial2.printf("CH%d %d\n", ch, chVal[ch]); // Gửi lệnh điều khiển servo qua Serial2
+      Serial2.printf("C%d %d\n", ch, chVal[ch]); // Gửi lệnh điều khiển servo qua Serial2
 
       // In ra giá trị lệnh nhận được từ ứng dụng
       DEBUG_PRINTF("Received CH%d: ", ch);
@@ -385,31 +379,31 @@ void exeCmd(String cmd)
       {
       case 4:
         // In ra thông báo khi nhận được lệnh "S G"
-        Serial2.printf("S G\n");
+        Serial2.printf("SG\n");
         DEBUG_PRINTLN("Received S G");
         client.write("LED2 0\n");
         break;
       case 3:
         // In ra thông báo khi nhận được lệnh "S R"
-        Serial2.printf("S R\n");
+        Serial2.printf("S3\n");
         DEBUG_PRINTLN("Received S R");
         client.write("LED2 0\n");
         break;
       case 0:
         // In ra thông báo khi nhận được lệnh "S N"
-        Serial2.printf("S N\n");
+        Serial2.printf("S0\n");
         DEBUG_PRINTLN("Received S N");
         client.write("LED2 1\n");
         break;
       case 1:
         // In ra thông báo khi nhận được lệnh "S 1"
-        Serial2.printf("S 1\n");
+        Serial2.printf("S1\n");
         DEBUG_PRINTLN("Received S 1");
         client.write("LED2 0\n");
         break;
       case 2:
         // In ra thông báo khi nhận được lệnh "S 2"
-        Serial2.printf("S 2\n");
+        Serial2.printf("S2\n");
         DEBUG_PRINTLN("Received S 2");
         client.write("LED2 0\n");
         break;
@@ -469,7 +463,7 @@ void exeCmd(String cmd)
     }
   }
 
-  /*-------Calib-----------------FINE-*/
+  /*-------Calib-----------------ER-*/
 
   if (cmd.startsWith("CALIB"))
   {
@@ -529,54 +523,89 @@ void exeCmd(String cmd)
 #include <Preferences.h>
 #include <ESP32_Servo.h>
 
+#define LED_CONNECT_ROUTER 25
+#define LED_CONNECT_CLIENT 26
+
 Preferences File;
 Servo myservo_1;
 Servo myservo_2;
+Servo myservo_3;
+Servo myservo_4;
+Servo myservo_5;
+Servo myservo_6;
 
-int SVR_pin_1 = 18;
-int SVR_pin_2 = 19;
+int SVR_pin_1 = 15;
+int SVR_pin_2 = 2;
+int SVR_pin_3 = 0; // bỏ
+int SVR_pin_4 = 4;
+int SVR_pin_5 = 18;
+int SVR_pin_6 = 19;
 
 /*---------------Preferences---------------------*/
 // Servo
 int Slide_1_max = 60;
 int Slide_2_max = 60;
 int Pos_1_min = 0;
-int Pos_2_min = 0;
 int Pos_1_max = 180;
+int Pos_2_min = 0;
 int Pos_2_max = 180;
+int Pos_3_min = 0;
+int Pos_3_max = 180;
+int Pos_4_min = 0;
+int Pos_4_max = 180;
+int Pos_5_min = 0;
+int Pos_5_max = 180;
+int Pos_6_min = 0;
+int Pos_6_max = 180;
 
 int Pos_1;
 int Pos_2;
+int Pos_3; // bỏ
+int Pos_4;
+int Pos_5;
+int Pos_6;
+
+int Pos_S_2 = 0;   // 2
+int Pos_S_1 = 45;  // 1
+int Pos_S_0 = 90;  // N
+int Pos_S_3 = 180; // R
 
 // Safe
 
 /*-----------------------------------------------*/
 
-int chVal[] = {1500, 1500, 1500, 1500}; // default value (middle)
+int chVal[] = {1500, 1500, 1500, 1500, 1500, 1500, 1500}; // default value (middle)
 
 void GetFS()
 {
   Slide_1_max = File.getInt("CALIB_1");
   Slide_2_max = File.getInt("CALIB_2");
-  Pos_1_max = File.getInt("CALIB_3");
-  Pos_2_max = File.getInt("CALIB_4");
-  Pos_1_min = File.getInt("CALIB_5");
-  Pos_2_min = File.getInt("CALIB_6");
+  Pos_1_min = File.getInt("Pos_1_min");
+  Pos_1_max = File.getInt("Pos_1_max");
+  Pos_2_min = File.getInt("Pos_2_min");
+  Pos_2_max = File.getInt("Pos_2_max");
+  Pos_3_min = File.getInt("Pos_3_min");
+  Pos_3_max = File.getInt("Pos_3_max");
+  Pos_4_min = File.getInt("Pos_4_min");
+  Pos_4_max = File.getInt("Pos_4_max");
+  Pos_5_min = File.getInt("Pos_5_min");
+  Pos_5_max = File.getInt("Pos_5_max");
+  Pos_6_min = File.getInt("Pos_6_min");
+  Pos_6_max = File.getInt("Pos_6_max");
 }
 
 void exeCmd(String cmd)
 {
-  //================ SERVO ================
-  // Kiểm tra nếu lệnh bắt đầu bằng "CH"
-  if (cmd.startsWith("CH"))
+  //================ CHANNEL ================
+  if (cmd.startsWith("C"))
   {
-    int ch = cmd.charAt(2) - '0'; // Lấy số kênh từ sau 'CH'
-    bool space = cmd.charAt(3) == ' ';
+    int ch = cmd.charAt(1) - '0'; // Lấy số kênh từ sau 'CH'
+    bool space = cmd.charAt(2) == ' ';
 
     // Kiểm tra nếu số kênh hợp lệ và có khoảng trắng sau số kênh
     if (ch >= 0 && ch <= 5 && space)
     {
-      chVal[ch] = cmd.substring(4).toInt(); // Lấy giá trị kênh từ sau số kênh
+      chVal[ch] = cmd.substring(3).toInt(); // Lấy giá trị kênh từ sau số kênh
       switch (ch)
       {
       case 1:
@@ -590,6 +619,67 @@ void exeCmd(String cmd)
         myservo_2.write(Pos_2);
         DEBUG_PRINTF("Received CH2: ");
         DEBUG_PRINTLN(Pos_2);
+        break;
+      case 3:
+        Pos_3 = map(chVal[ch], 0, Slide_2_max, Pos_2_min, Pos_2_max);
+        myservo_3.write(Pos_3);
+        DEBUG_PRINTF("Received CH3: ");
+        DEBUG_PRINTLN(Pos_3);
+        break;
+      case 4:
+        Pos_4 = map(chVal[ch], 0, Slide_2_max, Pos_2_min, Pos_2_max);
+        myservo_4.write(Pos_4);
+        DEBUG_PRINTF("Received CH4: ");
+        DEBUG_PRINTLN(Pos_4);
+        break;
+      case 5:
+        Pos_5 = map(chVal[ch], 0, Slide_2_max, Pos_2_min, Pos_2_max);
+        myservo_5.write(Pos_5);
+        DEBUG_PRINTF("Received CH2: ");
+        DEBUG_PRINTLN(Pos_5);
+        break;
+      case 6:
+        Pos_6 = map(chVal[ch], 0, Slide_2_max, Pos_2_min, Pos_2_max);
+        myservo_6.write(Pos_6);
+        DEBUG_PRINTF("Received CH6: ");
+        DEBUG_PRINTLN(Pos_6);
+        break;
+      default:
+        // Xử lý các kênh khác nếu cần
+        break;
+      }
+    }
+  }
+
+  //================ GEAR ================
+  if (cmd.startsWith("S"))
+  {
+    int ch = cmd.charAt(1) - '0'; // Lấy số kênh từ sau 'CH'
+
+    // Kiểm tra nếu số kênh hợp lệ và có khoảng trắng sau số kênh
+    if (ch >= 0 && ch <= 3)
+    {
+      switch (ch)
+      {
+      case 0:
+        myservo_4.write(Pos_S_0);
+        DEBUG_PRINTF("Received GEAR N: ");
+        DEBUG_PRINTLN(Pos_S_0);
+        break;
+      case 1:
+        myservo_4.write(Pos_S_1);
+        DEBUG_PRINTF("Received GEAR 1: ");
+        DEBUG_PRINTLN(Pos_S_1);
+        break;
+      case 2:
+        myservo_4.write(Pos_S_2);
+        DEBUG_PRINTF("Received GEAR 2: ");
+        DEBUG_PRINTLN(Pos_S_2);
+        break;
+      case 3:
+        myservo_4.write(Pos_S_3);
+        DEBUG_PRINTF("Received GEAR R: ");
+        DEBUG_PRINTLN(Pos_S_3);
         break;
       default:
         // Xử lý các kênh khác nếu cần
@@ -617,6 +707,25 @@ void exeCmd(String cmd)
       GetFS();
     }
   }
+
+  //================ CONNECT HOST ================
+
+  if (cmd.startsWith("LED_CONNECT_ROUTER"))
+  {
+    digitalWrite(LED_CONNECT_ROUTER, LOW);
+  }
+  if (cmd.startsWith("LED_DISCONNECT_ROUTER"))
+  {
+    digitalWrite(LED_CONNECT_ROUTER, HIGH);
+  }
+  if (cmd.startsWith("LED_CONNECT_CLIENT"))
+  {
+    digitalWrite(LED_CONNECT_CLIENT, LOW);
+  }
+  if (cmd.startsWith("LED_DISCONNECT_CLIENT"))
+  {
+    digitalWrite(LED_CONNECT_CLIENT, HIGH);
+  }
 }
 
 void processIncomingChar(char c)
@@ -636,19 +745,41 @@ void processIncomingChar(char c)
 void setup()
 {
   Serial.begin(115200);
-  Serial2.begin(115200);
+  Serial2.begin(921600);
 
-  File.begin("STA_config", false);
-  GetFS();
+  pinMode(LED_CONNECT_ROUTER, OUTPUT); // Thiết lập chân LED_CONNECT_ROUTER là OUTPUT
+  pinMode(LED_CONNECT_CLIENT, OUTPUT); // Thiết lập chân LED_CONNECT_CLIENT là OUTPUT
+  digitalWrite(LED_CONNECT_ROUTER, HIGH);
+  digitalWrite(LED_CONNECT_CLIENT, HIGH);
+
+  File.begin("servo", false);
+  // GetFS();
 
   myservo_1.attach(SVR_pin_1, 500, 2500);
   myservo_2.attach(SVR_pin_2, 500, 2500);
+  myservo_3.attach(SVR_pin_3, 500, 2500);
+  myservo_4.attach(SVR_pin_4, 500, 2500);
+  myservo_5.attach(SVR_pin_5, 500, 2500);
+  myservo_6.attach(SVR_pin_6, 500, 2500);
   // gắn servo trên chân 18 vào đối tượng servo
   // sử dụng SG90 servo tối thiểu/tối đa 500us và 2400us
   // đối với servo lớn MG995, sử dụng 1000us và 2000us,
+  DEBUG_PRINTLN("========================= OK =========================");
 }
+
+unsigned long previousMillis = 0;
+const long interval = 500;
+
 void loop()
 {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval)
+  {
+    // Cập nhật thời điểm cuối cùng khi tác vụ được thực hiện
+    previousMillis = currentMillis;
+  }
+
   // Kiểm tra xem có dữ liệu mới từ Serial2 không
   if (Serial2.available())
   {
