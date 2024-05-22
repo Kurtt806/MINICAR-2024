@@ -1,7 +1,7 @@
 #ifndef PREFS_H
 #define PREFS_H
-#include "setting.h"
 #include <Preferences.h>
+#include "setting.h"
 
 extern Preferences preferences;
 

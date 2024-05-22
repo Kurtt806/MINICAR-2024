@@ -1,19 +1,8 @@
-
-
-/*============ CONFIG ================================================*/
-#define ESP_WIFI
-#define DEBUG
-#define UART
-
-/*====================================================================*/
 #include <Arduino.h>
-#include "setting.h"
 
-#if defined(ESP_WIFI)
-#include "Module_wifi.h"
-#elif
-#include "Module_control.h"
-#endif
+/*============ MODULE ================================================*/
+
+#define ESP_WIFI
 
 /**********************************************************************
  *            macro PHONE ---> MODULE_WIFI  (wifi)                    *
@@ -22,21 +11,18 @@
  *
  *
  *
- * --> FC_CONNECT
- * |      |
- * |   FC_READING
- * |      |
- * |   FC_SEND_ALIVE
- * |      |
- * |   FC_READ_ALIVE
+ *     FC_CONNECT 
+ *        |           
+ *     FC_IDLE <-------
+ *        |           |
+ * --> FC_SEND_ALIVE  |
+ * |      |           |
+ * |   FC_READ_ALIVE__|
  * |      | 
- * |   FC_IDLE
+ * |   FC_READING
  * |______|
  *                                    
  * ********************************************************************/
-
-
-
 
 
 /**********************************************************************
@@ -50,6 +36,16 @@
  *
  *
  * ********************************************************************/
+
+
+/*====================================================================*/
+
+#include <setting.h>
+#if defined(ESP_WIFI)
+#include "Module_wifi.h"
+#elif
+#include "Module_control.h"
+#endif
 
 /*=================================================================*/
 void setup()
@@ -71,81 +67,6 @@ void loop()
 }
 
 
-
-
-
-// void FC_READING_COMMAND()
-// {
-//   // Kiểm tra xem có dữ liệu nào được gửi từ client tới máy chủ không
-//   if (client.available())
-//   {
-//     // Nếu có dữ liệu, đọc từng ký tự một
-//     char c = (char)client.read(); // Đọc ký tự từ client (ứng dụng RoboRemo)
-
-//     static String cmd = "";
-//     if (c == '\r' || c == '\n')
-//     {
-//       exeCmd(cmd); // Thực thi lệnh được đọc
-//       cmd = "";    // Xóa nội dung của lệnh sau khi thực thi
-//     }
-//     else
-//     {
-//       cmd += c; // Thêm ký tự vào lệnh
-//     }
-//   }
-//   // Sau khi đọc lệnh từ client, chuyển trạng thái hiện tại sang trạng thái SENDING_ALIVE_SIGNAL
-//   if (digitalRead(RST_PIN) == 0)
-//   {
-//     connectToWiFi(false);
-//   }
-//   currentState_ESP = SENDING_ALIVE_SIGNAL;
-// }
-
-// void FC_SENDING_ALIVE_SIGNAL()
-// {
-//   // Kiểm tra xem đã đến thời điểm gửi tín hiệu sống chưa
-//   if (millis() - aliveSentTime > 500)
-//   { // Mỗi 300ms
-//     // Gửi tín hiệu sống đến client
-//     client.write("LED1 1\n");
-
-//     RSSI = WiFi.RSSI();
-//     client.print("P ");
-//     client.println(RSSI);
-
-//     // Cập nhật thời điểm gửi tín hiệu sống mới nhất
-//     aliveSentTime = millis();
-//   }
-
-//   // Chuyển trạng thái hiện tại sang trạng thái READING_ALIVE_SIGNAL
-//   currentState_ESP = READING_ALIVE_SIGNAL;
-// }
-
-// void FC_READING_ALIVE_SIGNAL()
-// {
-//   if (millis() - aliveReceivedMillis > 1000)
-//   {
-//     currentState_ESP = WAITING_FOR_CONNECTION;
-//   }
-//   else
-//   {
-//     currentState_ESP = READING_COMMAND;
-//   }
-// }
-
-
-
-// /*-------------------------------------------------*/
-
-// /*======   CONTROL   =================================================*/
-// /*====================================================================*/
-// /*====================================================================*/
-// /*====================================================================*/
-// /*==================================================== COM 6 =========*/
-
-// #include <Arduino.h>
-// #include <Preferences.h>
-// #include <ESP32_Servo.h>
 
 // #define LED_CONNECT_ROUTER 25
 // #define LED_CONNECT_CLIENT 26

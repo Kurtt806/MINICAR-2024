@@ -8,12 +8,15 @@ int STA_WIFI_PORT;
 char AP_WIFI_NAME[] = "KHOA";
 char AP_WIFI_PASS[] = "12345678";
 
+char MODE_WIFI[] = "sta"; // ap
+
 WiFiServer server(80);
 WiFiClient client;
+IPAddress ipAddr;
 
 unsigned long lastCmdTime = 60000;
-unsigned long aliveSentTime = 0;
-unsigned long aliveReceivedMillis = 0;
+unsigned long aliveSendTime = 0;
+unsigned long aliveReadTime = 0;
 
 int RSSI;
 int chVal[] = {1500, 1500, 1500, 1500};
@@ -62,26 +65,36 @@ void Module_WIFI_setup()
     Serial.begin(SERIAL_BAUD_1);
     Serial2.begin(SERIAL_BAUD_2);
     pinMode(BOOT_PIN, INPUT);
-
+    DEBUG_PRINTLN("********************************");
     prefs_setup();
-    if (preferences.isKey("STA_WIFI_NAME"))
+    if (preferences.isKey("MODE_WIFI"))
     {
         strlcpy(STA_WIFI_NAME, preferences.getString("STA_WIFI_NAME").c_str(), sizeof(STA_WIFI_NAME));
         strlcpy(STA_WIFI_PASS, preferences.getString("STA_WIFI_PASS").c_str(), sizeof(STA_WIFI_PASS));
         strlcpy(STA_WIFI_IP, preferences.getString("STA_WIFI_IP").c_str(), sizeof(STA_WIFI_IP));
         STA_WIFI_PORT = preferences.getInt("STA_WIFI_PORT");
     }
+    else
+    {
+        strcpy(STA_WIFI_NAME, "Pham Khang");
+        strcpy(STA_WIFI_PASS, "11111111");
+        strcpy(STA_WIFI_IP, "192.168.1.111");
+        STA_WIFI_PORT = 80;
+    }
+    ipAddr.fromString(STA_WIFI_IP);
 
-    // if (STA_WIFI_NAME && STA_WIFI_PASS) // Kiểm tra nếu có tên và mật khẩu WiFi
-    // {
-    //     handle_connect(true); // Kết nối đến WiFi
-    // }
-    // else
-    // {
-    //     handle_connect(false); // Không có tên hoặc mật khẩu WiFi, không thực hiện kết nối
-    // }
-    // server.begin(STA_WIFI_PORT);
-    DEBUG_PRINTF("[MACHINE] SETUP OK\n");
+    // In ra giá trị đã lưu
+    DEBUG_PRINTF("[PREFS]. STA_WIFI_NAME: %s\n", STA_WIFI_NAME);
+    DEBUG_PRINTF("[PREFS]. STA_WIFI_PASS: %s\n", STA_WIFI_PASS);
+    DEBUG_PRINTF("[PREFS]. STA_WIFI_IP  : %s\n", STA_WIFI_IP);
+    DEBUG_PRINTF("[PREFS]. STA_WIFI_PORT: %d\n", STA_WIFI_PORT);
+    DEBUG_PRINTF("[MODEWIFI]. MODE: %s\n", MODE_WIFI);
+
+    // bật led onboard
+    SENTLN("LED_ON_ROUTER");
+    SENTLN("LED_ON_CLIENT");
+    DEBUG_PRINTF("[MACHINE]. SETUP OK\n");
+    DEBUG_PRINTLN("********************************");
 }
 void Module_WIFI_loop()
 {
@@ -120,57 +133,42 @@ void Module_WIFI_loop()
     // Kiểm tra xem đã 1 giây trôi qua chưa để in ra thời gian thực hiện vòng lặp
     if (millis() - lastPrintTime >= 1000)
     {
-        DEBUG_PRINTF("[MACHINE] Loop Duration: %dms\n", loopDuration);
+        DEBUG_PRINTF("[MACHINE]. Loop: %dms |Rssi: %d\n", loopDuration, RSSI);
         lastPrintTime = millis();
     }
 }
 
-void handle_connect(bool enable)
+void handle_connect(bool mode)
 {
-    // In ra giá trị đã lưu
-    DEBUG_PRINTLN("********************************");
-    DEBUG_PRINT("Stored value: ");
-    DEBUG_PRINT(STA_WIFI_NAME);
-    DEBUG_PRINT("|");
-    DEBUG_PRINT(STA_WIFI_PASS);
-    DEBUG_PRINT("|");
-    DEBUG_PRINT(STA_WIFI_IP);
-    DEBUG_PRINT("|");
-    DEBUG_PRINTLN(STA_WIFI_PORT);
-    DEBUG_PRINTLN("********************************");
-
-    if (enable)
+    if (mode)
     {
         WiFi.mode(WIFI_OFF);
         delay(200);
         WiFi.mode(WIFI_STA);
 
-        // WiFi.config(ip, ip, netmask);
-        WiFi.begin(WIFI_NAME, WIFI_PASS);
+        WiFi.config(ipAddr, ipAddr, netmask);
+        WiFi.begin(STA_WIFI_NAME, STA_WIFI_PASS);
 
-        // WiFi.begin(STA_WIFI_NAME, STA_WIFI_PASS);     // Bắt đầu kết nối
         unsigned long startConnectingTime = millis(); // Thời điểm bắt đầu kết nối
         // Chờ kết nối thành công
         while (WiFi.status() != WL_CONNECTED && millis() - startConnectingTime < 10000)
         {
             delay(1000);
-            DEBUG_PRINTLN("Connecting to WiFi...");
+            DEBUG_PRINTLN("[WIFI]. Đang kết nối WiFi...");
         }
         // Hiển thị IP khi kết nối thành công
         if (WiFi.status() == WL_CONNECTED)
         {
             // Kết nối thành công
-            DEBUG_PRINTLN("WiFi connected");
-            DEBUG_PRINT("IP address: ");
+            DEBUG_PRINTLN("[WIFI]. WiFi đã kết nối");
+            DEBUG_PRINT("[WIFI]. IP: ");
             DEBUG_PRINTLN(WiFi.localIP());
-            Serial2.println("LED_CONNECT_ROUTER");
         }
         else
         {
             // Không kết nối được trong 5 giây, đổi sang chế độ AP
-            DEBUG_PRINTLN("[WIFI] Không thể kết nối đến Host");
+            DEBUG_PRINTLN("[WIFI]. Không thể kết nối đến Host");
             handle_connect(false);
-            Serial2.println("LED_DISCONNECT_ROUTER");
         }
     }
     else
@@ -181,6 +179,7 @@ void handle_connect(bool enable)
         WiFi.mode(WIFI_AP);
         WiFi.softAPConfig(ip_AP, ip_AP, netmask); // cấu hình địa chỉ IP cho softAP
         WiFi.softAP(AP_WIFI_NAME, AP_WIFI_PASS);
+        DEBUG_PRINTLN("[WIFI] Đã chuyển sang AP");
     }
 }
 
@@ -215,7 +214,7 @@ void handle_message(String message)
 
     if (message.startsWith("LIV"))
     { // heartbeat sender's ID
-        aliveReceivedMillis = millis();
+        aliveReadTime = millis();
     }
 
     /*-------servo-----------------FINE-*/
@@ -387,27 +386,96 @@ void handle_message(String message)
 
 void FC_CONNECT()
 {
-    STATE_ESP = READING;
+    if (!strcmp(MODE_WIFI, "ap")) // Nếu mode ở chế độ ap
+    {
+        handle_connect(false); // Mở kết nối AP
+    }
+    else
+    {
+        handle_connect(true); // Kết nối đến WiFi
+    }
+    server.begin(STA_WIFI_PORT);
+
+    STATE_ESP = IDLE;
 }
 
 void FC_IDLE()
 {
-    STATE_ESP = CONNECT;
-}
+    if (!strcmp(MODE_WIFI, "ap")) // Nếu mode ở chế độ ap
+    {
+        SENTLN("MODE_AP");
+    }
+    else
+    {
+        if (WiFi.status() == WL_CONNECTED)
+        {
+            // Kết nối thành công
+            SENTLN("LED_OFF_ROUTER");
+        }
+        else
+        {
+            // Không kết nối được trong 5 giây, đổi sang chế độ AP
+            SENTLN("LED_ON_ROUTER");
+        }
+    }
 
-void FC_READING()
-{
     STATE_ESP = SEND_ALIVE;
 }
 
 void FC_SEND_ALIVE()
 {
+    // Kiểm tra xem đã đến thời điểm gửi tín hiệu sống chưa
+    if (millis() - aliveSendTime > 500)
+    { // Mỗi 500ms
+        // Gửi tín hiệu sống đến client
+        client.write("LED1 1\n");
+        RSSI = WiFi.RSSI();
+        client.print("P ");
+        client.println(RSSI);
+
+        // Cập nhật thời điểm gửi tín hiệu sống mới nhất
+        aliveSendTime = millis();
+    }
     STATE_ESP = READ_ALIVE;
 }
 
 void FC_READ_ALIVE()
 {
-    STATE_ESP = IDLE;
+    if (millis() - aliveReadTime > 1000)
+    {
+        STATE_ESP = IDLE;
+    }
+    else
+    {
+        STATE_ESP = READING;
+    }
+    STATE_ESP = READING;
+}
+
+void FC_READING()
+{
+    if (client.available())
+    {
+        char c = (char)client.read(); // Đọc ký tự từ client (ứng dụng RoboRemo)
+        static String cmd = "";
+        if (c == '\r' || c == '\n')
+        {
+            handle_message(cmd); // Thực thi lệnh được đọc
+            cmd = "";            // Xóa nội dung của lệnh sau khi thực thi
+        }
+        else
+        {
+            cmd += c; // Thêm ký tự vào lệnh
+        }
+    }
+    // Sau khi đọc lệnh từ client, chuyển trạng thái hiện tại sang trạng thái SENDING_ALIVE_SIGNAL
+    if (digitalRead(BOOT_PIN) == HIGH)
+    {
+        DEBUG_PRINTLN("[FC_READING]. BOOT_PIN change");
+        // strcpy(MODE_WIFI, "ap");
+        // STATE_ESP = CONNECT;
+    }
+    STATE_ESP = SEND_ALIVE;
 }
 
 void FC_ERROR()
