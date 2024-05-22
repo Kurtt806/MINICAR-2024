@@ -1,6 +1,7 @@
 {
     "commentTranslate.targetLanguage": "vi",
     "files.associations": {
-        "random": "cpp"
+        "random": "cpp",
+        "system_error": "cpp"
     }
 }

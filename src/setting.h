@@ -1,19 +1,29 @@
-//config
-
+// config
+//#define ESP_WIFI
 #define DEBUG
 #define SENT
 #define UART
 
 // wifi
+#ifdef ESP_WIFI
 
 #define WIFI_NAME "Pham Khang"
 #define WIFI_PASS "11111111"
-
-// gpio
-
 #define BOOT_PIN 0
 
+#else
 
+#define BOOT_PIN 0
+#define LED_CONNECT_ROUTER 25
+#define LED_CONNECT_CLIENT 26
+#define SVR_pin_1 15
+#define SVR_pin_2 2
+#define SVR_pin_3 0 // bỏ
+#define SVR_pin_4 4
+#define SVR_pin_5 18
+#define SVR_pin_6 19
+
+#endif
 
 // uart
 
@@ -39,27 +49,3 @@
 #define SENTLN(...)
 #define SENTF(...)
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
