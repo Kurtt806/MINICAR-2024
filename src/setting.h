@@ -1,5 +1,5 @@
 // config
-//#define ESP_WIFI
+#define ESP_WIFI
 #define DEBUG
 #define SENT
 #define UART
