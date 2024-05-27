@@ -37,7 +37,7 @@
 /*====================================================================*/
 
 #include <setting.h>
-#ifdef ESP_WIFI
+#ifdef MODULE_WIFI
 #include "Module_wifi.h"
 void setup()
 {
@@ -47,7 +47,9 @@ void loop()
 {
   Module_WIFI_loop();
 }
+
 #else
+
 #include "Module_control.h"
 void setup()
 {
@@ -58,5 +60,5 @@ void loop()
 {
   Module_CONTROL_loop();
 }
-#endif
 
+#endif

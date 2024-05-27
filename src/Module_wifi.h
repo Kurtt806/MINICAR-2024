@@ -13,7 +13,9 @@
 
 #include "setting.h"
 #include "prefs.h"
-
+#ifdef SYSLED
+#include "led.h"
+#endif
 void Module_WIFI_setup();
 void Module_WIFI_loop();
 
@@ -24,6 +26,7 @@ void handle_message(String message);
 void FC_IDLE();
 void FC_CONNECT();
 void FC_READING();
+void FC_RUN();
 void FC_SEND_ALIVE();
 void FC_READ_ALIVE();
 void FC_ERROR();

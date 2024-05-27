@@ -1,11 +1,13 @@
 // config
-#define ESP_WIFI
-#define DEBUG
+#define MODULE_WIFI
+//#define DEBUG
 #define SENT
 #define UART
+#define SYSLED
+//#define OTA
 
 // wifi
-#ifdef ESP_WIFI
+#ifdef MODULE_WIFI
 
 #define WIFI_NAME "Pham Khang"
 #define WIFI_PASS "11111111"

@@ -1,5 +1,5 @@
 #include "Module_control.h"
-#ifndef ESP_WIFI
+#ifndef MODULE_WIFI
 Preferences File;
 Servo myservo_1;
 Servo myservo_2;
