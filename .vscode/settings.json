@@ -1,0 +1,21 @@
+{
+    "commentTranslate.targetLanguage": "vi",
+    "files.associations": {
+        "random": "cpp",
+        "system_error": "cpp",
+        "algorithm": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "esp32-hal-cpu.h": "c",
+        "sdkconfig.h": "c",
+        "esp_attr.h": "c",
+        "esp_log.h": "c",
+        "esp32-hal.h": "c"
+    }
+}
