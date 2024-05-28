@@ -1,25 +1,24 @@
 
 
 #include <Module_wifi.h>
-#include <Arduino.h>
 
 #ifdef MODULE_WIFI
+
+CLS_CONNECT C_CONNECT;
 String cmd = "";
+
+char MODE_WIFI[] = "sta";
 
 char STA_WIFI_NAME[32];
 char STA_WIFI_PASS[32];
-char STA_WIFI_IP[16];
-int STA_WIFI_PORT;
+char STA_WIFI_IP[16] = "192.168.1.149";
+char STA_WIFI_PORT[5] = "80";
 
-char AP_WIFI_NAME[] = "KHOA";
+char AP_WIFI_NAME[] = "MD_WIFI";
 char AP_WIFI_PASS[] = "12345678";
-IPAddress AP_WIFI_IP(192, 168, 1, 4);
-char MODE_WIFI[] = "sta";
+char AP_WIFI_IP[] = "192.168.1.4";
+char AP_WIFI_PORT[5] = "80";
 
-IPAddress AP_WIFI_NETMASK(255, 255, 255, 0);
-WiFiServer server(80);
-WiFiClient client;
-IPAddress ipAddr;
 #ifdef SYSLED
 SYS_LED LED;
 #endif
@@ -28,15 +27,12 @@ unsigned long lastCmdTime = 60000;
 unsigned long aliveSendTime = 0;
 unsigned long aliveReadTime = 0;
 
-int RSSI;
 int chVal[] = {1500, 1500, 1500, 1500};
 
 enum State_ESP
 {
     IDLE,
     CONNECT,
-    READING,
-    SEND_ALIVE,
     READ_ALIVE,
     RUN,
     ERROR
@@ -44,7 +40,6 @@ enum State_ESP
 State_ESP STATE_ESP = CONNECT;
 
 // Khai báo biến toàn cục để tính thời gian
-unsigned long previousMillis = 0;
 unsigned long loopStartTime = 0;
 unsigned long loopEndTime = 0;
 unsigned int loopDuration = 0;
@@ -76,7 +71,7 @@ void Module_WIFI_setup()
     LED.setup();
 #endif
     strlcpy(MODE_WIFI, preferences.getString("MODE_WIFI").c_str(), sizeof(MODE_WIFI));
-    DEBUG_PRINTLN(MODE_WIFI);
+    DEBUG_PRINTF("[MODEWIFI]. MODE: %s\n", MODE_WIFI);
 
     if (!strcmp("sta", MODE_WIFI))
     {
@@ -84,29 +79,29 @@ void Module_WIFI_setup()
         strlcpy(STA_WIFI_NAME, preferences.getString("STA_WIFI_NAME", "0").c_str(), sizeof(STA_WIFI_NAME));
         strlcpy(STA_WIFI_PASS, preferences.getString("STA_WIFI_PASS", "0").c_str(), sizeof(STA_WIFI_PASS));
         strlcpy(STA_WIFI_IP, preferences.getString("STA_WIFI_IP", "0").c_str(), sizeof(STA_WIFI_IP));
-        STA_WIFI_PORT = preferences.getInt("STA_WIFI_PORT");
+        strlcpy(STA_WIFI_PORT, preferences.getString("STA_WIFI_PORT", "80").c_str(), sizeof(STA_WIFI_PORT));
 
         // In ra giá trị đã lưu
         DEBUG_PRINTF("[PREFS]. STA_WIFI_NAME: %s\n", STA_WIFI_NAME);
         DEBUG_PRINTF("[PREFS]. STA_WIFI_PASS: %s\n", STA_WIFI_PASS);
         DEBUG_PRINTF("[PREFS]. STA_WIFI_IP  : %s\n", STA_WIFI_IP);
-        DEBUG_PRINTF("[PREFS]. STA_WIFI_PORT: %d\n", STA_WIFI_PORT);
-        DEBUG_PRINTF("[MODEWIFI]. MODE: %s\n", MODE_WIFI);
+        DEBUG_PRINTF("[PREFS]. STA_WIFI_PORT: %s\n", STA_WIFI_PORT);
     }
     if (!strcmp("ap", MODE_WIFI))
     {
         DEBUG_PRINTLN("[SETUP MODE]: AP");
+        strlcpy(AP_WIFI_IP, preferences.getString("AP_WIFI_IP", "192.168.1.4").c_str(), sizeof(AP_WIFI_IP));
+        strlcpy(AP_WIFI_PORT, preferences.getString("AP_WIFI_PORT", "80").c_str(), sizeof(AP_WIFI_PORT));
         // In ra giá trị đã lưu
         DEBUG_PRINTF("[PREFS]. AP_WIFI_NAME: %s\n", AP_WIFI_NAME);
         DEBUG_PRINTF("[PREFS]. AP_WIFI_PASS: %s\n", AP_WIFI_PASS);
         DEBUG_PRINTF("[PREFS]. AP_WIFI_IP  : %s\n", AP_WIFI_IP);
-        DEBUG_PRINTF("[PREFS]. AP_WIFI_PORT: %d\n", STA_WIFI_PORT);
-        DEBUG_PRINTF("[MODEWIFI]. MODE: %s\n", MODE_WIFI);
+        DEBUG_PRINTF("[PREFS]. AP_WIFI_PORT: %d\n", AP_WIFI_PORT);
     }
+    C_CONNECT.setWIFI(MODE_WIFI, STA_WIFI_NAME, STA_WIFI_PASS, STA_WIFI_IP, STA_WIFI_PORT, AP_WIFI_NAME, AP_WIFI_PASS, AP_WIFI_IP, AP_WIFI_PORT);
 
     // bật led onboard
     DEBUG_PRINTF("[MACHINE]. SETUP OK\n");
-
     // báo led
     DEBUG_PRINTLN("********************************");
 }
@@ -120,11 +115,8 @@ void Module_WIFI_loop()
     case CONNECT:
         FC_CONNECT();
         break;
-    case READING:
-        FC_READING(); // 2485us
-        break;
-    case SEND_ALIVE:
-        FC_SEND_ALIVE(); // 2us
+    case RUN:
+        FC_RUN(); // 2485us
         break;
     case READ_ALIVE:
         FC_READ_ALIVE(); // 1us
@@ -164,60 +156,18 @@ void Module_WIFI_loop()
     }
 
     // Lưu thời gian kết thúc của vòng lặp và tính toán thời gian thực hiện
-    loopDuration = loopEndTime - loopStartTime;
-    if (millis() - lastPrintLoopTime >= 500)
+    if (millis() - lastPrintLoopTime >= 1000)
     {
-        // Serial.printf("[MACHINE]. Loop: %dus |\n", loopDuration);
-        client.print("LOOP ");
-        client.println(loopDuration);
         lastPrintLoopTime = millis();
+        loopDuration = loopEndTime - loopStartTime;
+        Serial.printf("[MACHINE]. Loop: %dus |\n", loopDuration);
+        C_CONNECT.stateSendMessage("LOOP ");
+        C_CONNECT.stateSendMessage(loopDuration);
+        C_CONNECT.stateSendMessage("\n");
     }
 }
 
 /*=================================================*/
-void handle_connect(bool mode)
-{
-    if (mode)
-    {
-        WiFi.mode(WIFI_OFF);
-        delay(200);
-        WiFi.mode(WIFI_STA);
-        ipAddr.fromString(STA_WIFI_IP);
-        WiFi.config(ipAddr, ipAddr, AP_WIFI_NETMASK);
-        WiFi.begin(STA_WIFI_NAME, STA_WIFI_PASS);
-
-        unsigned long startConnectingTime = millis(); // Thời điểm bắt đầu kết nối
-        // Chờ kết nối thành công
-        while (WiFi.status() != WL_CONNECTED && millis() - startConnectingTime < 10000)
-        {
-            delay(1000);
-            DEBUG_PRINTLN("[WIFI]. Đang kết nối WiFi...");
-        }
-        // Hiển thị IP khi kết nối thành công
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            // Kết nối thành công
-            DEBUG_PRINTLN("[WIFI]. WiFi đã kết nối");
-            DEBUG_PRINT("[WIFI]. IP: ");
-            DEBUG_PRINTLN(WiFi.localIP());
-        }
-        else
-        {
-            DEBUG_PRINTLN("[WIFI]. Không thể kết nối đến Host");
-            handle_connect(false);
-        }
-    }
-    else
-    {
-        WiFi.mode(WIFI_OFF);
-        delay(200);
-        DEBUG_PRINTLN("[WIFI] Đang chuyển sang chế độ AP");
-        WiFi.mode(WIFI_AP);
-        WiFi.softAPConfig(AP_WIFI_IP, AP_WIFI_IP, AP_WIFI_NETMASK); // cấu hình địa chỉ IP cho softAP
-        WiFi.softAP(AP_WIFI_NAME, AP_WIFI_PASS);
-        DEBUG_PRINTLN("[WIFI] Đã chuyển sang AP");
-    }
-}
 
 void handle_incoming(char message)
 {
@@ -287,31 +237,32 @@ void handle_message(String message)
                 // In ra thông báo khi nhận được lệnh "S G"
                 Serial2.printf("SG\n");
                 DEBUG_PRINTLN("Received S G");
-                client.write("LED2 0\n");
+                C_CONNECT.stateSendMessage("LED2 4\n");
+
                 break;
             case 3:
                 // In ra thông báo khi nhận được lệnh "S R"
                 Serial2.printf("S3\n");
                 DEBUG_PRINTLN("Received S R");
-                client.write("LED2 0\n");
+                C_CONNECT.stateSendMessage("LED2 3\n");
                 break;
             case 0:
                 // In ra thông báo khi nhận được lệnh "S N"
                 Serial2.printf("S0\n");
                 DEBUG_PRINTLN("Received S N");
-                client.write("LED2 1\n");
+                C_CONNECT.stateSendMessage("LED2 0\n");
                 break;
             case 1:
                 // In ra thông báo khi nhận được lệnh "S 1"
                 Serial2.printf("S1\n");
                 DEBUG_PRINTLN("Received S 1");
-                client.write("LED2 0\n");
+                C_CONNECT.stateSendMessage("LED2 1\n");
                 break;
             case 2:
                 // In ra thông báo khi nhận được lệnh "S 2"
                 Serial2.printf("S2\n");
                 DEBUG_PRINTLN("Received S 2");
-                client.write("LED2 0\n");
+                C_CONNECT.stateSendMessage("LED2 2\n");
                 break;
             default:
                 // In ra thông báo khi nhận được lệnh không xác định
@@ -361,7 +312,10 @@ void handle_message(String message)
     }
 
     /*-------Calib-----------------ER-*/
-
+    if (cmd.startsWith("RESETCONTROL"))
+    {
+        SENTLN("RESET");
+    }
     if (message.startsWith("CALIB"))
     {
         int val = message.substring(8).toInt();
@@ -375,34 +329,40 @@ void handle_message(String message)
             switch (ch)
             {
             case 1:
-                Serial2.printf("CALIB1 %d\n", val);
-                client.print("CLIB 1 ");
-                client.println(val);
+                SENTF("CALIB1 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 1 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             case 2:
-                Serial2.printf("CALIB2 %d\n", val);
-                client.print("CLIB 2 ");
-                client.println(val);
+                SENTF("CALIB2 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 2 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             case 3:
-                Serial2.printf("CALIB3 %d\n", val);
-                client.print("CLIB 3 ");
-                client.println(val);
+                SENTF("CALIB3 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 3 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             case 4:
-                Serial2.printf("CALIB4 %d\n", val);
-                client.print("CLIB 4 ");
-                client.println(val);
+                SENTF("CALIB4 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 4 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             case 5:
-                Serial2.printf("CALIB5 %d\n", val);
-                client.print("CLIB 5 ");
-                client.println(val);
+                SENTF("CALIB5 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 5 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             case 6:
-                Serial2.printf("CALIB6 %d\n", val);
-                client.print("CLIB 6 ");
-                client.println(val);
+                SENTF("CALIB6 %d\n", val);
+                C_CONNECT.stateSendMessage("CLIB 6 ");
+                C_CONNECT.stateSendMessage(val);
+                C_CONNECT.stateSendMessage("\n");
                 break;
             }
         }
@@ -412,107 +372,120 @@ void handle_message(String message)
 /*=================================================*/
 void FC_CONNECT()
 {
-    if (!strcmp(MODE_WIFI, "ap")) // Nếu mode ở chế độ ap
+    // Nếu mode ở chế độ ap
+    if (!strcmp(MODE_WIFI, "ap"))
     {
 #ifdef SYSLED
-        LED.HOST(true);
+        LED.HOST_AP(true);
         LED.CLIENT(false);
 #endif
-        handle_connect(false); // Mở kết nối AP
+        C_CONNECT.stateConnectAP();
+        STATE_ESP = RUN;
     }
+    // Nếu mode ở chế độ sta
     else
     {
 #ifdef SYSLED
-        LED.HOST(false);
+        LED.HOST_STA(false);
         LED.CLIENT(false);
 #endif
-        handle_connect(true); // Kết nối đến WiFi
+        if (C_CONNECT.stateConnectSTA())
+        {
+            // kết nối sta thành công
+            LED.HOST_STA(true);
+            STATE_ESP = IDLE;
+        }
+        else
+        {
+            strlcpy(MODE_WIFI, "ap", sizeof(MODE_WIFI));
+            STATE_ESP = CONNECT;
+        }
     }
-    server.begin(STA_WIFI_PORT);
-    STATE_ESP = IDLE;
 }
 
 void FC_IDLE()
 {
-    if (!strcmp(MODE_WIFI, "ap")) // Nếu mode ở chế độ ap
-    {
-        STATE_ESP = READING;
-    }
-    else
+    if (!strcmp(MODE_WIFI, "sta"))
     {
         // Kết nối thành công
-        if (WiFi.status() == WL_CONNECTED)
+        if (C_CONNECT.stateCheckConnectHost())
         {
-#ifdef SYSLED
-            // báo led
-            LED.HOST(true);
-#endif
-            STATE_ESP = SEND_ALIVE;
+            STATE_ESP = RUN;
         }
         // Không kết nối được
         else
         {
-#ifdef SYSLED
             // báo led
-            LED.HOST(false);
+#ifdef SYSLED
+            LED.HOST_STA(false);
 #endif
-            STATE_ESP = ERROR;
+            STATE_ESP = CONNECT;
         }
     }
-}
-
-void FC_SEND_ALIVE()
-{
-    // Kiểm tra xem đã đến thời điểm gửi tín hiệu sống chưa
-    if (millis() - aliveSendTime > 800)
-    { // Mỗi 800ms
-        // Gửi tín hiệu sống đến client
-        client.write("LED1 1\n");
-// #ifdef DEBUG
-        RSSI = WiFi.RSSI();
-        client.print("P ");
-        client.println(RSSI);
-// #endif
-    aliveSendTime = millis();
-    }
-    STATE_ESP = READ_ALIVE;
-}
-
-void FC_READ_ALIVE()
-{
-    if (millis() - aliveReadTime > 1000) // không nhận được tín hiệu còn kết nối
+    else
     {
+        STATE_ESP = RUN;
     }
-    STATE_ESP = READING;
 }
 
-void FC_READING()
+/**
+ * @function FC_READ_ALIVE
+ * @brief Chạy chức năng đọc tín hiệu sống
+ * @details
+ *     - Kiểm tra xem đã đến thởi điểm nhận được tín hiệu sống chưa
+ *     - Nếu đã đến thòi điểm, chuyển trạng thái ESP sang kiểm tra host & client
+ */
+void FC_READ_ALIVE() // fixx
 {
-    if (!client.connected())
+    // Kiểm tra xem đã đến thòi điểm nhận được tín hiệu sống chưa
+    if (millis() - aliveReadTime > 1000)
     {
-        client = server.available();
+        // Chuyển trạng thái ESP sang kiểm tra host & client
+        STATE_ESP = RUN;
+    }
+    else
+    {
+        // bình thường
+        C_CONNECT.getPing(millis() - aliveReadTime);
+        STATE_ESP = IDLE;
+    }
+}
+
+/**
+ * @function FC_READING
+ * @brief Chạy chức năng reading
+ * @details
+ *     - Chuyển trạng thái ESP sang reading
+ *
+ */
+void FC_RUN()
+{
+    if (!C_CONNECT.stateCheckConnectClient())
+    {
+        // không có client kết nối
 // báo led
 #ifdef SYSLED
         LED.CLIENT(false);
         didled = false;
 #endif
-        STATE_ESP = READING;
+        STATE_ESP = RUN;
     }
     else
     {
-// báo led
 #ifdef SYSLED
         if (!didled)
         {
             LED.CLIENT(true);
             didled = true;
         }
-#endif
-        if (client.available())
+#endif // có client kết nối
+        if (C_CONNECT.stateClientAvalible())
         {
-            char c = (char)client.read();
+            // có tin nhắn
+            char c = C_CONNECT.stateGetMessage();
             if (c == '\r' || c == '\n')
             {
+                // DEBUG_PRINTLN(cmd);
                 handle_message(cmd);
                 cmd = "";
             }
@@ -521,8 +494,9 @@ void FC_READING()
                 cmd += c;
             }
         }
+        // đến kiểm tra mềm client
+        STATE_ESP = READ_ALIVE;
     }
-    STATE_ESP = SEND_ALIVE;
 }
 
 /**
@@ -534,7 +508,7 @@ void FC_READING()
  */
 void FC_ERROR()
 {
-    STATE_ESP = READING;
+    STATE_ESP = RUN;
 }
 
 #endif

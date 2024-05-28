@@ -12,7 +12,8 @@ class SYS_LED
 public:
     SYS_LED();
     void setup();
-    void HOST(bool isConnected);
+    void HOST_AP(bool isConnected);
+    void HOST_STA(bool isConnected);
     void CLIENT(bool isConnected);
     void AP(bool isConnected);
     void RX();

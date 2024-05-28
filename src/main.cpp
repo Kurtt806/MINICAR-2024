@@ -4,20 +4,19 @@
 
 /**********************************************************************
  *            macro PHONE ---> MODULE_WIFI  (wifi)                    *
- **********************************************************************
+ ********************************************************************** *
  *
- *
- *
- *
- *     FC_CONNECT
+ *     FC_CONNECT             class CLS_CONNECT = stateConnectSTA -> stateConnectAP -> stateIsConnected -> stateCheckConnect
+ *        |                                 
+ *        |                                                     
  *        |
- *     FC_IDLE <-------
+ *     FC_IDLE <-------       
  *        |           |
- * --> FC_SEND_ALIVE  |
+ * --> FC_RUN         |       
  * |      |           |
- * |   FC_READ_ALIVE__|
+ * |   FC_READ_ALIVE__|      
  * |      |
- * |   FC_READING
+ * |   FC_READING             
  * |______|
  *
  * ********************************************************************/

@@ -14,21 +14,39 @@ void SYS_LED::setup()
     {
         fill_rainbow(leds, SYS_NUMLEDS, i, 7);
         FastLED.show();
-        delay(10);
+        delay(5);
     }
     fill_solid(leds, SYS_NUMLEDS, CRGB::Black);
     FastLED.show();
-    delay(1000);
 }
 
 
-void SYS_LED::HOST(bool isConnected)
+void SYS_LED::HOST_STA(bool isConnected)
 {
     if (isConnected)
     {
         for (size_t i = 0; i < SYS_NUMLEDS - 6; i++)
         {
             leds[i] = CRGB::Green;
+        }
+        FastLED.show();
+    }
+    if (!isConnected)
+    {
+        for (size_t i = 0; i < SYS_NUMLEDS - 6; i++)
+        {
+            leds[i] = CRGB::Red;
+        }
+        FastLED.show();
+    }
+}
+void SYS_LED::HOST_AP(bool isConnected)
+{
+    if (isConnected)
+    {
+        for (size_t i = 0; i < SYS_NUMLEDS - 6; i++)
+        {
+            leds[i] = CRGB::Orange;
         }
         FastLED.show();
     }

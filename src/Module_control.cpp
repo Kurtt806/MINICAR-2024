@@ -42,20 +42,26 @@ const long interval2 = 500;
 
 void GetFS()
 {
-  Slide_1_max = File.getInt("CALIB_1");
-  Slide_2_max = File.getInt("CALIB_2");
-  Pos_1_min = File.getInt("Pos_1_min");
-  Pos_1_max = File.getInt("Pos_1_max");
-  Pos_2_min = File.getInt("Pos_2_min");
-  Pos_2_max = File.getInt("Pos_2_max");
-  Pos_3_min = File.getInt("Pos_3_min");
-  Pos_3_max = File.getInt("Pos_3_max");
-  Pos_4_min = File.getInt("Pos_4_min");
-  Pos_4_max = File.getInt("Pos_4_max");
-  Pos_5_min = File.getInt("Pos_5_min");
-  Pos_5_max = File.getInt("Pos_5_max");
-  Pos_6_min = File.getInt("Pos_6_min");
-  Pos_6_max = File.getInt("Pos_6_max");
+    Slide_1_max = preferences.getInt("CALIB_1", 60);
+    Pos_1_min = preferences.getInt("CALIB_2", 0);
+    Pos_1_max = preferences.getInt("CALIB_3", 180);
+    Slide_2_max = preferences.getInt("CALIB_4", 60);
+    Pos_2_min = preferences.getInt("CALIB_5", 0);
+    Pos_2_max = preferences.getInt("CALIB_6", 180);
+    Pos_3_min = preferences.getInt("Pos_3_min");
+    Pos_3_max = preferences.getInt("Pos_3_max");
+    Pos_4_min = preferences.getInt("Pos_4_min");
+    Pos_4_max = preferences.getInt("Pos_4_max");
+    Pos_5_min = preferences.getInt("Pos_5_min");
+    Pos_5_max = preferences.getInt("Pos_5_max");
+    Pos_6_min = preferences.getInt("Pos_6_min");
+    Pos_6_max = preferences.getInt("Pos_6_max");
+    DEBUG_PRINTF("Slide_1_max: %d\n", Slide_1_max);
+    DEBUG_PRINTF("Pos_1_min: %d\n", Pos_1_min);
+    DEBUG_PRINTF("Pos_1_max: %d\n", Pos_1_max);
+    DEBUG_PRINTF("Slide_2_max: %d\n", Slide_2_max);
+    DEBUG_PRINTF("Pos_2_min: %d\n", Pos_2_min);
+    DEBUG_PRINTF("Pos_2_max: %d\n", Pos_2_max);
 }
 
 void handle_incoming(char message)
@@ -171,39 +177,61 @@ void handle_message(String cmd)
 
     if (cmd.startsWith("CALIB"))
     {
-        int val;
-        int param = cmd.charAt(5) - '0'; // Lấy ký tự sau 'CALIB'
+        int val = cmd.substring(7).toInt(); // Lấy phần giá trị sau số thứ tự
+        int param = cmd.charAt(5) - '0';    // Lấy ký tự sau 'CALIB'
         bool space = cmd.charAt(6) == ' ';
 
         // Kiểm tra nếu có khoảng trắng và param nằm trong khoảng từ 1 đến 9
         if (space && (param >= 1 && param <= 9))
         {
-            val = cmd.substring(7).toInt(); // Lấy phần giá trị sau số thứ tự
+            if (param == 1)
+            {
+                preferences.putInt("CALIB_1", val);
+            }
+            if (param == 2)
+            {
+                preferences.putInt("CALIB_2", val);
+            }
+            if (param == 3)
+            {
+                preferences.putInt("CALIB_3", val);
+            }
+            if (param == 4)
+            {
+                preferences.putInt("CALIB_4", val);
+            }
+            if (param == 5)
+            {
+                preferences.putInt("CALIB_5", val);
+            }
+            if (param == 6)
+            {
+                preferences.putInt("CALIB_6", val);
+            }
+            if (param == 7)
+            {
+                preferences.putInt("CALIB_7", val);
+            }
+            if (param == 8)
+            {
+                preferences.putInt("CALIB_8", val);
+            }
+            if (param == 9)
+            {
+                preferences.putInt("CALIB_9", val);
+            }
+
             DEBUG_PRINTF("val %d: %d \n", param, val);
-            String fileName = "CALIB_" + String(param);
-            File.putInt(fileName.c_str(), val);
             GetFS();
         }
     }
+    //================ RESET ================
+    if (cmd.startsWith("RESET"))
+    {
+        ESP.restart();
+    }
 
     //================ CONNECT HOST ================
-
-    if (cmd.startsWith("LED_OFF_ROUTER"))
-    {
-        digitalWrite(LED_CONNECT_ROUTER, LOW);
-    }
-    if (cmd.startsWith("LED_ON_ROUTER"))
-    {
-        digitalWrite(LED_CONNECT_ROUTER, HIGH);
-    }
-    if (cmd.startsWith("LED_OFF3_CLIENT"))
-    {
-        digitalWrite(LED_CONNECT_CLIENT, LOW);
-    }
-    if (cmd.startsWith("LED_ON_CLIENT"))
-    {
-        digitalWrite(LED_CONNECT_CLIENT, HIGH);
-    }
 }
 
 void Module_CONTROL_setup()
@@ -211,13 +239,9 @@ void Module_CONTROL_setup()
     Serial.begin(SERIAL_BAUD_1);
     Serial2.begin(SERIAL_BAUD_2);
     DEBUG_PRINTLN("********************************");
-    pinMode(LED_CONNECT_ROUTER, OUTPUT); // Thiết lập chân LED_CONNECT_ROUTER là OUTPUT
-    pinMode(LED_CONNECT_CLIENT, OUTPUT); // Thiết lập chân LED_CONNECT_CLIENT là OUTPUT
     pinMode(BOOT_PIN, INPUT_PULLUP);
-    digitalWrite(LED_CONNECT_ROUTER, HIGH);
-    digitalWrite(LED_CONNECT_CLIENT, HIGH);
     prefs_setup();
-    // GetFS();
+    GetFS();
 
     myservo_1.attach(SVR_pin_1, 500, 2500);
     myservo_2.attach(SVR_pin_2, 500, 2500);
